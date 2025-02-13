@@ -44,15 +44,15 @@ async def run_service(request: APIRequest):
             )
         elif request.image:
             encoded_image = encode_image(request.image)
-            messages.extend([
-                ("human", [
+            messages.append(
+                ("human", json.dumps([
                     {"type": "text", "text": "This is the screenshot of the current screen"},
                     {
                         "type": "image_url",
                         "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"},
                     },
-                ]),
-            ])
+                ]))
+            )
         else:
             raise HTTPException(
                 status_code=400, 
@@ -64,7 +64,7 @@ async def run_service(request: APIRequest):
         print(ai_msg)
         
         # Clean and parse the AI response
-        cleaned_content = ai_msg.content.strip("```json\n").strip("\n```")
+        cleaned_content = str(ai_msg.content).strip("```json\n").strip("\n```")
         try:
             parsed_output = json.loads(cleaned_content)
             
