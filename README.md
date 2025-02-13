@@ -69,9 +69,11 @@ Analyzes mobile screens to determine if test data generation is required and pro
 
 ```json
 {
-  "image": "string", // Optional: File path or URL
-  "xml": "string", // Optional: File path or URL
-  "config_data": {} // Optional: Configuration data for field generation
+  "image": "string", // Optional: Base64 encoded image string
+  "xml": "string", // Optional: XML as string
+  "image_url": "string", // Optional: File path or URL
+  "xml_url": "string", // Optional: File path or URL
+  "config_data": {} // Optional: Configuration data for test data generation
 }
 ```
 
