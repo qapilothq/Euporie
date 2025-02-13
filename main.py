@@ -1,4 +1,4 @@
-from utils import encode_image, process_xml
+from utils import encode_image, process_xml, validate_base64
 from llm import initialize_llm
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
@@ -14,7 +14,9 @@ app = FastAPI()
 
 class APIRequest(BaseModel):
     image: Optional[str] = None
+    image_url: Optional[str] = None
     xml: Optional[str] = None
+    xml_url: Optional[str] = None
     config_data: Optional[Dict[str, Any]] = None
 
 
@@ -42,15 +44,26 @@ async def run_service(request: APIRequest):
             messages.append(
                 ("human", f'This is the xml source of that screen: {xml}')
             )
+        elif request.xml_url:
+            xml = process_xml(request.xml_url)
+            messages.append(
+                ("human", f'This is the xml source of that screen: {xml}')
+            )
         elif request.image:
-            encoded_image = encode_image(request.image)
+            if not validate_base64(request.image):
+                raise HTTPException(status_code=400, detail="Invalid base64 image data")
             messages.append(
                 ("human", json.dumps([
                     {"type": "text", "text": "This is the screenshot of the current screen"},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"},
-                    },
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{request.image}"}},
+                ]))
+            )
+        elif request.image_url:
+            encoded_image = encode_image(request.image_url)
+            messages.append(
+                ("human", json.dumps([
+                    {"type": "text", "text": "This is the screenshot of the current screen"},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}},
                 ]))
             )
         else:
