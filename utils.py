@@ -94,3 +94,10 @@ def encode_image(input_source):
     except Exception as e:
         print(f"Error encoding image: {e}")
         return None
+
+def validate_base64(base64_string: str) -> bool:
+    try:
+        base64.b64decode(base64_string)
+        return True
+    except Exception:
+        return False

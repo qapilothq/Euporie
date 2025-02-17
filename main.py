@@ -1,4 +1,4 @@
-from utils import encode_image, process_xml
+from utils import encode_image, process_xml, validate_base64
 from llm import initialize_llm
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
@@ -23,6 +23,7 @@ class APIRequest(BaseModel):
     xml: Optional[str] = None          # XML as string
     xml_url: Optional[str] = None      # XML URL option
     image_url: Optional[str] = None    # Image URL option
+    config_data: Optional[Dict[str, Any]] = None
 
 faker = Faker()
 
@@ -85,6 +86,10 @@ async def run_service(request: APIRequest):
         llm = initialize_llm(llm_key)
         messages = [("system", system_prompt)]
 
+        if request.config_data:
+            messages.append(
+                ("human", f"Configuration data for field generation: {json.dumps(request.config_data, indent=2)}")
+            )   
         if request.xml or request.xml_url:
             if request.xml_url:
                 logger.debug("XML URL provided.",request.xml_url)
@@ -107,12 +112,8 @@ async def run_service(request: APIRequest):
             messages.extend([
                 ("human", [
                     {"type": "text", "text": "This is the screenshot of the current screen"},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"},
-                    },
-                ]),
-            ])
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}},
+                ])])
         else:
             logger.error("Either image or xml must be provided.")
             return {
