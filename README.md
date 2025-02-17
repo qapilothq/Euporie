@@ -14,6 +14,8 @@ Euporie is a robust FastAPI-based application designed to intelligently generate
 - RESTful API for seamless integration
 - Detailed field metadata extraction from XML
 - Comprehensive API documentation
+- **New**: Support for base64 encoded images and XML as strings
+- **New**: Integration with Faker library for realistic data generation
 
 ## Prerequisites
 
@@ -23,16 +25,16 @@ Euporie is a robust FastAPI-based application designed to intelligently generate
 - uvicorn
 - requests (for URL handling)
 - python-dotenv (for environment variable management)
+- **New**: Faker library for data generation
 
 ## Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/qapilotio/Euporie.git
    cd Euporie
    ```
-
-````
 
 2. Install dependencies:
 
@@ -69,8 +71,10 @@ Analyzes mobile screens to determine if test data generation is required and pro
 
 ```json
 {
-  "image": "string", // Optional: File path or URL
-  "xml": "string", // Optional: File path or URL
+  "image": "string", // Optional: Base64 encoded image string
+  "xml": "string", // Optional: XML as string
+  "image_url": "string", // Optional: Image URL
+  "xml_url": "string", // Optional: XML URL
   "config_data": {} // Optional: Configuration data for field generation
 }
 ```
@@ -89,7 +93,8 @@ Analyzes mobile screens to determine if test data generation is required and pro
         "field_name": "string",
         "input_type": "string",
         "value": "string",
-        "source": "generated/config file"
+        "source": "generated/config /faker",
+        "faker_function": "string" // Optional: Faker function used for data generation
       }
     ]
   }
@@ -139,4 +144,7 @@ For questions or support, please contact **[contactus@qapilot.com](mailto:contac
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-````
+
+```
+
+```
