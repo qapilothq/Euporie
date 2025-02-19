@@ -24,9 +24,10 @@ Your response must include the field `"data_generation_required"` with either `"
       "data_generation_required": True,
       "fields": [
           {
+              "id": "unique_identifier",  // Include this field only if XML data is provided; use the id number based on the XML data
               "field_name": "Name",
               "input_type": "text",  // e.g., "text", "number", "date", etc.
-              "value": "Placeholder or pre-generated value" Optional only needs to be filled if suitable value is not available in the config or the suitable faker field was not available
+              "value": "Provide a suitable value if the source is 'llm'",  // Ensure this is filled if source is 'llm'
               "faker_function": "name",  // Optional: if a matching Faker function exists
               "source": "faker"  // "faker" if a Faker function is used, "config" if from config, "llm" otherwise
           }

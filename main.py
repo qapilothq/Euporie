@@ -86,6 +86,8 @@ async def run_service(request: APIRequest):
         llm = initialize_llm(llm_key)
         messages = [("system", system_prompt)]
 
+        xml_metadata = None 
+
         if request.config_data:
             messages.append(
                 ("human", f"Configuration data for field generation: {json.dumps(request.config_data, indent=2)}")
@@ -94,13 +96,20 @@ async def run_service(request: APIRequest):
             if request.xml_url:
                 logger.debug("XML URL provided.",request.xml_url)
             xml_data = request.xml if request.xml else request.xml_url
-            xml = process_xml(xml_data)
+            xml_metadata = process_xml(xml_data)
             messages.append(
-                ("human", f'This is the xml source of that screen: {xml}')
+                ("human", f'This is the xml source of that screen: {xml_metadata}')
             )
         elif request.image or request.image_url:
-            if request.image and validate_base64(request.image):
-                encoded_image = request.image
+            if request.image:
+                if validate_base64(request.image):
+                    encoded_image = request.image
+                else:
+                    logger.error("Base64 string not provided in image field.")
+                    return {
+                        "status": "error",
+                        "message": "Base64 string not provided in image field."
+                    }
             elif request.image_url:
                 encoded_image = encode_image(request.image_url)
             else:
@@ -175,6 +184,11 @@ async def run_service(request: APIRequest):
                     else:
                         # If the faker function is not available, use the LLM provided value
                         field["value"] = field.get("value", "Value not generated")
+
+                if xml_metadata and "id" in field:
+                    field_id = field["id"]
+                    if field_id in xml_metadata:
+                        field["metadata"] = xml_metadata[field_id]
         
         return {
             "status": "success",

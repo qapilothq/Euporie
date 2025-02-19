@@ -29,17 +29,20 @@ def process_xml(xml_input):
         else:
             raise ValueError("Invalid XML input type.")
         
-        interactable_elements = []
 
         # Find all clickable elements
         clickable_elements = root.findall('.//*[@clickable="true"]')
         
-        for action_elem in clickable_elements:
+        interactable_elements = {}
+
+        for idx, action_elem in enumerate(clickable_elements, start=1):
+            
             action_details = {
                 'text': action_elem.get('text', ''),
-                'id': action_elem.get('resource-id', ''),
+                'resource_id': action_elem.get('resource-id', ''),
                 'type': action_elem.tag.split('.')[-1],
                 'bounds': action_elem.get('bounds', ''),
+                'class': action_elem.get('class', ''),
                 'content_desc': action_elem.get('content-desc', ''),
                 'enabled': action_elem.get('enabled', 'true') == 'true',
                 'focused': action_elem.get('focused', 'false') == 'true',
@@ -48,7 +51,7 @@ def process_xml(xml_input):
                 'password': action_elem.get('password', 'false') == 'true',
                 'selected': action_elem.get('selected', 'false') == 'true'
             }
-            interactable_elements.append(action_details)
+            interactable_elements[str(idx)] = action_details  # Use id as the key
         
         return interactable_elements
     
