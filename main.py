@@ -89,6 +89,7 @@ async def run_service(request: APIRequest):
         xml_metadata = None 
 
         if request.config_data:
+            logger.debug("Config data provided.",request.config_data)
             messages.append(
                 ("human", f"Configuration data for field generation: {json.dumps(request.config_data, indent=2)}")
             )   
