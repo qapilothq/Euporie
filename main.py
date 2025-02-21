@@ -89,10 +89,12 @@ async def run_service(request: APIRequest):
         xml_metadata = None 
 
         if request.config_data:
-            logger.debug("Config data provided.",request.config_data)
+            logger.debug(f"Config data provided: {request.config_data}")
             messages.append(
                 ("human", f"Configuration data for field generation: {json.dumps(request.config_data, indent=2)}")
-            )   
+            ) 
+        else:
+            logger.debug("No config data provided.")
         if request.xml or request.xml_url:
             if request.xml_url:
                 logger.debug("XML URL provided.",request.xml_url)
