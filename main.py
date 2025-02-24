@@ -68,33 +68,63 @@ def clean_markdown_json(content):
     return content
 
 
+def get_field_value(field: Dict[str, Any], config_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Get field value based on priority:
+    1. Use value from parsed output if source is 'config' or 'llm'
+    2. Faker function if available
+    3. Default placeholder if no value is generated
+    """
+    field_name = field.get("field_name", "").lower()
+    
+    # Directly use the value from parsed output if source is 'config' or 'llm'
+    if field.get("source") in ["config", "llm"]:
+        logger.info(f"Using value from parsed output for field: {field_name} with source: {field['source']}")
+        return field
+
+    # Priority 2: Check Faker function
+    faker_func = field.get("faker_function")
+    if faker_func and faker_func in faker_fields:
+        try:
+            logger.info(f"Using Faker function '{faker_func}' for field: {field_name}")
+            field["value"] = getattr(faker, faker_func)()
+            field["source"] = "faker"
+            return field
+        except Exception as e:
+            logger.warning(f"Faker generation failed for {faker_func}: {str(e)}")
+            # Continue to default placeholder if Faker fails
+
+    # Default placeholder if no value is generated
+    logger.warning(f"No value generated for field: {field_name}, using default placeholder.")
+    field["value"] = "Value not generated"
+    field["source"] = "llm"
+    
+    return field
+
 @app.post("/invoke")
 async def run_service(request: APIRequest):
     try:
         logger.info("Invoke endpoint called.")
-        # logger.debug(f"Request data: {request.json()}")
 
         llm_key = os.getenv("OPENAI_API_KEY")
         if not llm_key:
             logger.error("API key not found.")
-            return {
-                "status": "error",
-                "message": "API key not found. Please check your environment variables."
-            }
+            return {"status": "error", "message": "API key not found"}
 
         logger.info("Initializing LLM.")
         llm = initialize_llm(llm_key)
         messages = [("system", system_prompt)]
 
-        xml_metadata = None 
+        xml_metadata = None
 
+        # Handle config data
         if request.config_data:
             logger.debug(f"Config data provided: {request.config_data}")
             messages.append(
                 ("human", f"Configuration data for field generation: {json.dumps(request.config_data, indent=2)}")
-            ) 
-        else:
-            logger.debug("No config data provided.")
+            )
+
+        # Process XML or image input
         if request.xml or request.xml_url:
             if request.xml_url:
                 logger.debug("XML URL provided.",request.xml_url)
@@ -135,75 +165,38 @@ async def run_service(request: APIRequest):
 
         ai_msg = llm.invoke(messages)
         logger.debug(f"AI message content: {ai_msg.content}")
-
-        # Clean and parse the AI response
-     
-
         cleaned_content = clean_markdown_json(ai_msg.content)
+        
         try:
             parsed_output = json.loads(cleaned_content)
             
             # Validate response format
             if "data_generation_required" not in parsed_output:
-                return {
-                    "status": "error",
-                    "message": "Invalid response format: missing 'data_generation_required' field"
-                }
+                return {"status": "error", "message": "Invalid response format"}
+            
+            # Process fields if data generation is required
+            if parsed_output["data_generation_required"] == True:
+                if "fields" not in parsed_output:
+                    return {"status": "error", "message": "Missing fields array"}
                 
-            if parsed_output["data_generation_required"] not in [True, False]:
-                return {
-                    "status": "error",
-                    "message": "Invalid value for 'data_generation_required'. Expected 'True' or 'False'"
-                }
-                
-            if parsed_output["data_generation_required"] == True and "fields" not in parsed_output:
-                return {
-                    "status": "error",
-                    "message": "Invalid response format: 'fields' array missing for data generation"
-                }
-                
+                # Process each field with priority logic
+                for field in parsed_output["fields"]:
+                    field = get_field_value(field, request.config_data)
+                    
+                    # Add XML metadata if available
+                    if xml_metadata and "id" in field:
+                        field_id = field["id"]
+                        if field_id in xml_metadata:
+                            field["metadata"] = xml_metadata[field_id]
+            
+            return {"status": "success", "agent_response": parsed_output}
+            
         except json.JSONDecodeError:
-            return {
-                "status": "error",
-                "message": f"Failed to parse AI message content as JSON. Content: {ai_msg.content}"
-            }
-        
-        logger.debug(f"Parsed output: {parsed_output}")
-
-        # If data generation is required, process each field:
-        if parsed_output["data_generation_required"] == True:
-            for field in parsed_output["fields"]:
-                # Check if the field specifies a faker function
-                if "faker_function" in field and field["faker_function"]:
-                    faker_func = field["faker_function"]
-                    if faker_func in faker_fields:
-                        try:
-                            # Generate the fake value using the corresponding faker method
-                            field["value"] = getattr(faker, faker_func)()
-                            field["source"] = "faker"
-                        except Exception as e:
-                            # In case of an error, fallback to the provided value
-                            field["value"] = field.get("value", f"Error generating with {faker_func}: {str(e)}")
-                    else:
-                        # If the faker function is not available, use the LLM provided value
-                        field["value"] = field.get("value", "Value not generated")
-
-                if xml_metadata and "id" in field:
-                    field_id = field["id"]
-                    if field_id in xml_metadata:
-                        field["metadata"] = xml_metadata[field_id]
-        
-        return {
-            "status": "success",
-            "agent_response": parsed_output
-        }
+            return {"status": "error", "message": "Failed to parse AI response"}
 
     except Exception as e:
         logger.exception("An error occurred during the invoke process.")
-        return {
-            "status": "error",
-            "message": str(e)
-        }
+        return {"status": "error", "message": str(e)}
 
 @app.get("/health")
 async def health_check():

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Euporie is a robust FastAPI-based application designed to intelligently generate test data for mobile application fields. By analyzing screenshots and XML structures, it determines the necessity of data generation and provides structured data when required.
+Euporie is a robust FastAPI-based application designed to intelligently generate test data for mobile application fields. By analyzing screenshots and XML structures, it determines the necessity of data generation and provides structured data following a strict priority-based generation system.
 
 **Current Status**: Beta version supporting Android XML only. iOS support coming soon.
 
@@ -10,12 +10,15 @@ Euporie is a robust FastAPI-based application designed to intelligently generate
 
 - Automated analysis of mobile screens for data generation needs
 - Dual input support: Screenshots and XML hierarchy files
-- Intelligent data generation powered by OpenAI's GPT-4
+- Intelligent data generation with priority-based system:
+  1. Configuration data (highest priority)
+  2. Faker library integration (second priority)
+  3. LLM-based generation (fallback option)
 - RESTful API for seamless integration
 - Detailed field metadata extraction from XML
 - Comprehensive API documentation
-- **New**: Support for base64 encoded images and XML as strings
-- **New**: Integration with Faker library for realistic data generation
+- Support for base64 encoded images and XML as strings
+- Extensive Faker library integration for realistic data generation
 
 ## Prerequisites
 
@@ -25,7 +28,8 @@ Euporie is a robust FastAPI-based application designed to intelligently generate
 - uvicorn
 - requests (for URL handling)
 - python-dotenv (for environment variable management)
-- **New**: Faker library for data generation
+- Faker library for data generation
+- Custom logging configuration
 
 ## Installation
 
@@ -65,7 +69,7 @@ Euporie is a robust FastAPI-based application designed to intelligently generate
 
 ### POST /invoke
 
-Analyzes mobile screens to determine if test data generation is required and provides generated data if needed.
+Analyzes mobile screens and generates test data following a strict priority system.
 
 #### Request Body
 
@@ -87,19 +91,55 @@ Analyzes mobile screens to determine if test data generation is required and pro
 {
   "status": "success",
   "agent_response": {
-    "data_generation_required": "yes/no",
+    "data_generation_required": true/false,
     "fields": [
       {
+        "id": "unique_identifier", // Only included with XML data
         "field_name": "string",
         "input_type": "string",
         "value": "string",
-        "source": "generated/config /faker",
-        "faker_function": "string" // Optional: Faker function used for data generation
+        "faker_function": "string", // null if source is 'config' or 'llm'
+        "source": "config/faker/llm"
       }
     ]
   }
 }
 ```
+
+### Supported Faker Functions
+
+The system supports numerous Faker functions for data generation, including:
+
+- email
+- address
+- basic_phone_number
+- city
+- state
+- zipcode
+- country
+- credit_card_number
+- credit_card_expire
+- credit_card_security_code
+- date_of_birth
+- name
+- first_name
+- last_name
+- gender
+- password
+- username
+- profile
+- company
+- company_email
+- website (url)
+- image (profile picture)
+- language_name
+- locale
+- postalcode
+- user_agent
+- uuid4
+- random_int
+- ip address (ipv4, ipv6)
+- date_time
 
 ### GET /health
 
@@ -111,10 +151,11 @@ Health check endpoint returning application status.
 euporie/
 ├── main.py          # FastAPI application and endpoints
 ├── utils.py         # Helper functions and utilities
-├── prompts.py       # GPT-4 prompt templates
-├── llm.py           # OpenAI integration
+├── prompts.py       # System prompt and templates
+├── llm.py          # OpenAI integration
+├── logger_config.py # Logging configuration
 ├── requirements.txt # Project dependencies
-└── .env             # Environment variables
+└── .env            # Environment variables
 ```
 
 ## Error Handling
@@ -126,6 +167,8 @@ The API implements comprehensive error handling for:
 - Failed API calls
 - Image processing errors
 - XML parsing failures
+- Faker function failures
+- JSON parsing errors
 
 ## Contributing
 
@@ -144,7 +187,3 @@ For questions or support, please contact **[contactus@qapilot.com](mailto:contac
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-```
-
-```
