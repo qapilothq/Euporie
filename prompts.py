@@ -24,7 +24,7 @@ Your response must include the field `"data_generation_required"` with either `T
       "data_generation_required": true,
       "fields": [
           {
-              "id": "unique_identifier",  // Include this field only if XML data is provided
+              "id": "unique_identifier",  // Include this field only if XML data is provided; use the id number based on the XML data
               "field_name": "name",  // Use lowercase for config matching
               "input_type": "text",  // e.g., "text", "number", "date", etc.
               "value": "Generated value",  // Must be filled if source is 'config' or 'llm'
