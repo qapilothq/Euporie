@@ -12,11 +12,21 @@ from faker import Faker
 import base64
 from logger_config import setup_logger
 import time
+from fastapi.middleware.cors import CORSMiddleware
 
 logger = setup_logger()
 
 load_dotenv()
 app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_credentials=True,
+    allow_methods=["*"], 
+    allow_headers=["*"],  
+)
 
 class APIRequest(BaseModel):
     image: Optional[str] = None        # Base64 encoded image string
