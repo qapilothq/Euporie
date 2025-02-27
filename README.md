@@ -87,6 +87,8 @@ Analyzes mobile screens and generates test data following a strict priority syst
 
 #### Response Format
 
+When only an image is provided:
+
 ```json
 {
   "status": "success",
@@ -94,12 +96,46 @@ Analyzes mobile screens and generates test data following a strict priority syst
     "data_generation_required": true/false,
     "fields": [
       {
-        "id": "unique_identifier", // Only included with XML data
         "field_name": "string",
         "input_type": "string",
         "value": "string",
         "faker_function": "string", // null if source is 'config' or 'llm'
         "source": "config/faker/llm"
+      }
+    ]
+  }
+}
+```
+
+When XML is provided (additional fields included):
+
+```json
+{
+  "status": "success",
+  "agent_response": {
+    "data_generation_required": true/false,
+    "fields": [
+      {
+        "id": "unique_identifier", // Unique identifier for the field
+        "field_name": "string",
+        "input_type": "string",
+        "value": "string",
+        "faker_function": "string", // null if source is 'config' or 'llm'
+        "source": "config/faker/llm",
+        "metadata": { // Detailed field information extracted from XML
+          "text": "string", // Display text
+          "resource_id": "string",
+          "type": "string", // UI component type (e.g., EditText)
+          "bounds": "string", // Position coordinates
+          "class": "string", // Android/iOS class
+          "content_desc": "string",
+          "enabled": boolean,
+          "focused": boolean,
+          "scrollable": boolean,
+          "long_clickable": boolean,
+          "password": boolean,
+          "selected": boolean
+        }
       }
     ]
   }
