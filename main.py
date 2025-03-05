@@ -13,6 +13,7 @@ import base64
 from logger_config import setup_logger
 import time
 from fastapi.middleware.cors import CORSMiddleware
+from langsmith import traceable
 
 logger = setup_logger()
 
@@ -111,6 +112,7 @@ def get_field_value(field: Dict[str, Any], config_data: Optional[Dict[str, Any]]
     
     return field
 
+@traceable
 @app.post("/invoke")
 async def run_service(request: APIRequest):
     try:
