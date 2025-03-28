@@ -1,4 +1,4 @@
-from utils import encode_image, process_xml, validate_base64
+from utils import encode_image, process_xml, validate_base64,annotate_image
 from llm import initialize_llm
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
@@ -127,7 +127,7 @@ async def run_service(request: APIRequest):
         llm = initialize_llm(llm_key)
         messages = [("system", system_prompt)]
 
-        xml_metadata = None
+        processed_xml = None
 
         # Handle config data
         if request.config_data:
@@ -136,44 +136,60 @@ async def run_service(request: APIRequest):
                 ("human", f"Configuration data for field generation: {json.dumps(request.config_data, indent=2)}")
             )
 
-        # Process XML or image input
-        if request.xml or request.xml_url:
-            if request.xml_url:
-                logger.debug("XML URL provided.",request.xml_url)
-            xml_data = request.xml if request.xml else request.xml_url
-            xml_metadata = process_xml(xml_data)
-            messages.append(
-                ("human", f'This is the xml source of that screen: {xml_metadata}')
-            )
-        elif request.image or request.image_url:
-            if request.image:
-                if validate_base64(request.image):
-                    encoded_image = request.image
-                else:
-                    logger.error("Base64 string not provided in image field.")
-                    return {
-                        "status": "error",
-                        "message": "Base64 string not provided in image field."
-                    }
-            elif request.image_url:
-                encoded_image = encode_image(request.image_url)
-            else:
-                logger.error("Invalid image data provided.")
-                return {
-                    "status": "error",
-                    "message": "Invalid image data provided."
-                }
+
+        if request.image:
+            if not validate_base64(request.image):
+                raise HTTPException(status_code=400, detail="Invalid base64 image data")
+            encoded_image = request.image
+        elif request.image_url:
+            logger.info(f"Image URL: {request.image_url}")
+            encoded_image = encode_image(request.image_url)
+        
+        if request.xml:
+            processed_xml = process_xml(request.xml)
+        elif request.xml_url:
+            logger.info(f"XML URL: {request.xml_url}")
+            processed_xml = process_xml(request.xml_url)
+        
+        
+
+
+
+        if encoded_image and processed_xml:
+            logger.info("Both image and XML provided")
+            logger.debug(f"Processed XML: {processed_xml}")
+            annotated_image = annotate_image(encoded_image, processed_xml)
+
             messages.extend([
                 ("human", [
-                    {"type": "text", "text": "This is the screenshot of the current screen"},
+                    {"type": "text", "text": "Screenshot of current screen with annotated element IDs"},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{annotated_image}"}},
+                ])])
+            
+            messages.append(
+                ("human", f'This is the xml source of that screen: {processed_xml}')
+            )
+
+        elif encoded_image:
+            logger.info("Only image provided")
+            messages.extend([
+                ("human", [
+                    {"type": "text", "text": "Screenshot of current screen"},
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}},
                 ])])
+        elif processed_xml:
+            logger.info("Only XML provided")
+            logger.debug(f"Processed XML: {processed_xml}")
+            messages.append(
+                ("human", f'This is the xml source of that screen: {processed_xml}')
+            )
         else:
             logger.error("Either image or xml must be provided.")
-            return {
-                "status": "error",
-                "message": "Either image or xml must be provided."
-            }
+
+            raise HTTPException(
+                status_code=400,
+                detail="Either XML (string/URL) or image (base64/URL) must be provided."
+            )
 
         ai_msg = llm.invoke(messages)
         logger.debug(f"AI message content: {ai_msg.content}")
@@ -196,10 +212,10 @@ async def run_service(request: APIRequest):
                     field = get_field_value(field, request.config_data)
                     
                     # Add XML metadata if available
-                    if xml_metadata and "id" in field:
+                    if processed_xml and "id" in field:
                         field_id = field["id"]
-                        if field_id in xml_metadata:
-                            field["metadata"] = xml_metadata[field_id]
+                        if field_id in processed_xml:
+                            field["metadata"] = processed_xml[field_id]
             
             return {"status": "success", "agent_response": parsed_output}
             
