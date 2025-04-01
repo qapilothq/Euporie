@@ -146,10 +146,10 @@ def annotate_image(base64_image, xml_data):
                     # Draw element ID
                     draw.text((x1-30, y1-30), element_id, fill="red", font=font)  # Position text at top-left corner
 
-    plt.figure(figsize=(8, 8))
-    plt.imshow(image)
-    plt.axis('off')  # Hide the axis
-    plt.show()
+    # plt.figure(figsize=(8, 8))
+    # plt.imshow(image)
+    # plt.axis('off')  # Hide the axis
+    # plt.show()
     # Convert back to base64
     buffered = BytesIO()
     image.save(buffered, format="JPEG")
