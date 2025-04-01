@@ -6,7 +6,7 @@ from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 import uuid
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 
 def process_xml(xml_input):
