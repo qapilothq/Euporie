@@ -29,7 +29,8 @@ Your response must include the field `"data_generation_required"` with either `T
               "input_type": "text",  // e.g., "text", "number", "date", etc.
               "value": "Generated value",  // Must be filled if source is 'config' or 'llm'
               "faker_function": null,  // Must be null if source is 'config' or 'llm'
-              "source": "config"  // One of: "config", "faker", "llm"
+              "source": "config"  // One of: "config", "faker", "llm",
+              "type": "type of the value field similar to fake_function" // this must be filled strictly based on the value in 'value' field
           }
       ]
   }
@@ -44,6 +45,7 @@ For each input field, follow this priority order:
      - Set source = "config"
      - Set value = matching config value
      - Set faker_function = null
+     - Set data_type = set the appropriate type of the matched config value. This something like what you see in faker functions, not the technical data type.
 
 2. **Faker Function Check**:
    - If no config match, check if a suitable Faker function exists
@@ -57,6 +59,7 @@ For each input field, follow this priority order:
      - Set source = "llm"
      - Set faker_function = null
      - Set value = generate appropriate value for the field
+     - Set data_type = generate the appropriate type of the value generated. This something like what you see in faker functions, not the technical data type.
 
 ### **4. Available Faker Functions**
 When source is "faker", use one of these Faker functions:

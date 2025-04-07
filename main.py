@@ -151,10 +151,6 @@ async def run_service(request: APIRequest):
             logger.info(f"XML URL: {request.xml_url}")
             processed_xml = process_xml(request.xml_url)
         
-        
-
-
-
         if encoded_image and processed_xml:
             logger.info("Both image and XML provided")
             logger.debug(f"Processed XML: {processed_xml}")
