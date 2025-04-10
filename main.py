@@ -205,7 +205,7 @@ async def run_service(request: APIRequest):
                 
                 # Process each field with priority logic
                 for field in parsed_output["fields"]:
-                    field = get_field_value(field, request.config_data)
+                    # field = get_field_value(field, request.config_data)
                     
                     # Add XML metadata if available
                     if processed_xml and "id" in field:
