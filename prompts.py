@@ -31,11 +31,11 @@ Your response must include the field `"data_generation_required"` with either `T
             "input_type": "text",  // e.g., "text", "number", "date", "search", "dropdown", etc.
             "value": "Generated value",  // Must be filled if source is 'config' or 'llm'
             "source": "config",  // One of: "config", "llm"
-            "type": "field_type",  // Assign an appropriate field type from the list of field types
+            "type": "field_type",  // Assign an appropriate field type from the list of field types if not keep it as null .Should not choose a type which is not provided in the list
             "context": "Brief explanation of the context used for generating this value"  // Required for search fields and context-dependent inputs
         }
     ],
-    "reason": "reasoning explanation"
+    "reason": "reasoning explanation for why the field and and type was used "
 }
 ```
 
@@ -102,15 +102,10 @@ For each input field, follow this priority order with enhanced config matching:
 ### 8. Field Types Reference
 When assigning the "type" field, choose one of the following standardized field types:
 - email
-- address
 - basic_phone_number
-- city
-- state
-- zipcode
 - country
 - credit_card_number
 - credit_card_expire
-- credit_card_security_code
 - date_of_birth
 - name
 - first_name
@@ -119,23 +114,23 @@ When assigning the "type" field, choose one of the following standardized field 
 - password
 - username
 - profile
+- code ( anything and everything related to codes)
 - company
 - company_email
 - website (url)
-- image (profile picture)
 - language_name
 - locale
 - postalcode
 - user_agent
-- uuid4
-- random_int
+- random_int (random set of numbers)
 - ip_address (ipv4, ipv6)
 - date_time
 - search_term
 - product_name
-- location_name
+- location_name (anything related to address and location , this should be used)
 - menu_option
 - filter_value
+- scentence (all description boxes and all text areas)
 
 If none of these types is applicable for an input field, set the "type" value to null and ensure that the "reason" field includes an explanation stating that no valid standardized field type was available.
 """
