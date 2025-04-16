@@ -8,7 +8,7 @@ from datetime import datetime
 import uuid
 import re
 import json
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 def process_xml(xml_input):
     """
@@ -226,10 +226,10 @@ def annotate_image(base64_image, xml_data):
                 draw.text((text_x, text_y), element_id, fill="red", font=font)
 
 
-    plt.figure(figsize=(8, 8))
-    plt.imshow(image)
-    plt.axis('off')  # Hide the axis
-    plt.show()
+    # plt.figure(figsize=(8, 8))
+    # plt.imshow(image)
+    # plt.axis('off')  # Hide the axis
+    # plt.show()
     # Convert to buffer and encode
     buffered = BytesIO()
     image.save(buffered, format="JPEG")
