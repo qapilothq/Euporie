@@ -225,8 +225,7 @@ def annotate_image(base64_image, xml_data):
                     x1, y1, x2, y2 = map(int, coords)
                     # Draw rectangle
                     draw.rectangle([(x1, y1), (x2, y2)], outline="red", width=3)  # Increased outline width
-                    center_y = (y1 + y2) // 2
-                    draw.text((x1 - 30, center_y+5), element_id, fill="red", font=font)  # Position text at left center
+                    draw.text((x1 - 30, y1+20), element_id, fill="red", font=font)  # Position text at left center
 
     # plt.figure(figsize=(8, 8))
     # plt.imshow(image)
