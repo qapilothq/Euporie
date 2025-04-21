@@ -130,7 +130,7 @@ When assigning the "type" field, choose one of the following standardized field 
 - location_name (anything related to address and location , this should be used)
 - menu_option
 - filter_value
-- scentence (all description boxes and all text areas)
+- sentence (all description boxes and all text areas)
 
 If none of these types is applicable for an input field, set the "type" value to null and ensure that the "reason" field includes an explanation stating that no valid standardized field type was available.
 """

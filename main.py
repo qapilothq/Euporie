@@ -144,20 +144,20 @@ async def run_service(request: APIRequest):
         if request.image:
             if not validate_base64(request.image):
                 raise HTTPException(status_code=400, detail="Invalid base64 image data")
-            encoded_image = request.image
+            encoded_image = await request.image
         elif request.image_url:
             logger.info(f"Image URL: {request.image_url}")
-            encoded_image = encode_image(request.image_url)
+            encoded_image = await encode_image(request.image_url)
         
         # Process elements data (clickable elements, XML, or XML URL)
         if hasattr(request, 'clickable_elements') and request.clickable_elements:
             logger.info("Processing clickable elements.")
-            processed_elements = process_clickable_elements(request.clickable_elements)
+            processed_elements = await process_clickable_elements(request.clickable_elements)
         elif request.xml:
-            processed_elements = process_xml(request.xml)
+            processed_elements = await process_xml(request.xml)
         elif request.xml_url:
             logger.info(f"XML URL: {request.xml_url}")
-            processed_elements = process_xml(request.xml_url)
+            processed_elements = await process_xml(request.xml_url)
         
         # Combine image and elements data if both are available
         if encoded_image and processed_elements:
@@ -208,7 +208,7 @@ async def run_service(request: APIRequest):
             )
 
         # Process the rest of the function as before
-        ai_msg = llm.invoke(messages)
+        ai_msg = await llm.invoke(messages)
         logger.debug(f"AI message content: {ai_msg.content}")
         cleaned_content = clean_markdown_json(ai_msg.content)
         
