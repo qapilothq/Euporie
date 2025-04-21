@@ -150,7 +150,49 @@ def encode_image(input_source):
         print(f"Error encoding image: {e}")
         return None
 
+def process_clickable_elements(clickable_elements):
+    """
+    Processes clickable elements from the JSON format and returns in a consistent format
+    similar to process_xml() output.
 
+    Args:
+        clickable_elements (list): List of clickable element objects in the specified format
+
+    Returns:
+        dict: A dictionary of dictionaries, each containing details of a clickable element
+    """
+    interactable_elements = {}
+    
+    try:
+        for idx, element in enumerate(clickable_elements, start=1):
+            # Extract essential information
+            element_type = element.get('className', '')
+            element_id = element.get('elid', idx)
+            
+            # Format bounds from the available properties
+            bounds = element.get('bounds', '')
+            if not bounds and 'x1' in element and 'y1' in element and 'x2' in element and 'y2' in element:
+                bounds = f"[{element['x1']},{element['y1']}][{element['x2']},{element['y2']}]"
+                
+            # Format consistent with process_xml output
+            action_details = {
+                'text': element.get('text', ''),
+                'resource_id': element.get('resourceid', ''),
+                'type': element_type.split('.')[-1] if element_type else '',
+                'bounds': bounds,
+                'class': element_type,
+                'content_desc': element.get('contentdesc', ''),
+                'enabled': element.get('clickable', 'false') == 'true',
+                'password': False  # Default, can be adjusted based on actual data
+            }
+            
+            # Store by provided ID or index
+            interactable_elements[str(element_id)] = action_details
+            
+        return interactable_elements
+    except Exception as e:
+        print(f"Error processing clickable elements: {e}")
+        return {}
 def annotate_image(base64_image, xml_data):
     """
     Annotate the image with bounding boxes and element IDs for all interactable elements.

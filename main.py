@@ -1,4 +1,4 @@
-from utils import encode_image, process_xml, validate_base64,annotate_image
+from utils import encode_image, process_xml, validate_base64,annotate_image,process_clickable_elements
 from llm import initialize_llm
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
@@ -35,6 +35,8 @@ class APIRequest(BaseModel):
     xml_url: Optional[str] = None      # XML URL option
     image_url: Optional[str] = None    # Image URL option
     config_data: Optional[Dict[str, Any]] = None
+    clickable_elements: Optional[list] = None  # List of clickable elements objects
+
 
 faker = Faker()
 
@@ -113,6 +115,7 @@ def get_field_value(field: Dict[str, Any], config_data: Optional[Dict[str, Any]]
     return field
 
 @traceable
+# Update the FastAPI endpoint to handle clickable elements
 @app.post("/invoke")
 async def run_service(request: APIRequest):
     try:
@@ -127,7 +130,7 @@ async def run_service(request: APIRequest):
         llm = initialize_llm(llm_key)
         messages = [("system", system_prompt)]
 
-        processed_xml = None
+        processed_elements = None
 
         # Handle config data
         if request.config_data:
@@ -136,7 +139,8 @@ async def run_service(request: APIRequest):
                 ("human", f"Configuration data for field generation: {json.dumps(request.config_data, indent=2)}")
             )
 
-
+        # Process image (base64 or URL)
+        encoded_image = None
         if request.image:
             if not validate_base64(request.image):
                 raise HTTPException(status_code=400, detail="Invalid base64 image data")
@@ -145,16 +149,21 @@ async def run_service(request: APIRequest):
             logger.info(f"Image URL: {request.image_url}")
             encoded_image = encode_image(request.image_url)
         
-        if request.xml:
-            processed_xml = process_xml(request.xml)
+        # Process elements data (clickable elements, XML, or XML URL)
+        if hasattr(request, 'clickable_elements') and request.clickable_elements:
+            logger.info("Processing clickable elements.")
+            processed_elements = process_clickable_elements(request.clickable_elements)
+        elif request.xml:
+            processed_elements = process_xml(request.xml)
         elif request.xml_url:
             logger.info(f"XML URL: {request.xml_url}")
-            processed_xml = process_xml(request.xml_url)
+            processed_elements = process_xml(request.xml_url)
         
-        if encoded_image and processed_xml:
-            logger.info("Both image and XML provided")
-            logger.debug(f"Processed XML: {processed_xml}")
-            annotated_image = annotate_image(encoded_image, processed_xml)
+        # Combine image and elements data if both are available
+        if encoded_image and processed_elements:
+            logger.info("Both image and elements data provided")
+            logger.debug(f"Processed elements: {processed_elements}")
+            annotated_image = annotate_image(encoded_image, processed_elements)
 
             messages.extend([
                 ("human", [
@@ -162,9 +171,15 @@ async def run_service(request: APIRequest):
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{annotated_image}"}},
                 ])])
             
-            messages.append(
-                ("human", f'This is the xml source of that screen: {processed_xml}')
-            )
+            # Add the source data for context
+            if hasattr(request, 'clickable_elements') and request.clickable_elements:
+                messages.append(
+                    ("human", f'These are the clickable elements of that screen: {processed_elements}')
+                )
+            else:
+                messages.append(
+                    ("human", f'This is the xml source of that screen: {processed_elements}')
+                )
 
         elif encoded_image:
             logger.info("Only image provided")
@@ -173,20 +188,26 @@ async def run_service(request: APIRequest):
                     {"type": "text", "text": "Screenshot of current screen"},
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}},
                 ])])
-        elif processed_xml:
-            logger.info("Only XML provided")
-            logger.debug(f"Processed XML: {processed_xml}")
-            messages.append(
-                ("human", f'This is the xml source of that screen: {processed_xml}')
-            )
+        elif processed_elements:
+            logger.info("Only elements data provided")
+            logger.debug(f"Processed elements: {processed_elements}")
+            
+            if hasattr(request, 'clickable_elements') and request.clickable_elements:
+                messages.append(
+                    ("human", f'These are the clickable elements of that screen: {processed_elements}')
+                )
+            else:
+                messages.append(
+                    ("human", f'This is the xml source of that screen: {processed_elements}')
+                )
         else:
-            logger.error("Either image or xml must be provided.")
-
+            logger.error("Either image or elements data must be provided.")
             raise HTTPException(
                 status_code=400,
-                detail="Either XML (string/URL) or image (base64/URL) must be provided."
+                detail="Either clickable elements, XML (string/URL), or image (base64/URL) must be provided."
             )
 
+        # Process the rest of the function as before
         ai_msg = llm.invoke(messages)
         logger.debug(f"AI message content: {ai_msg.content}")
         cleaned_content = clean_markdown_json(ai_msg.content)
@@ -203,15 +224,13 @@ async def run_service(request: APIRequest):
                 if "fields" not in parsed_output:
                     return {"status": "error", "message": "Missing fields array"}
                 
-                # Process each field with priority logic
+                # Process each field
                 for field in parsed_output["fields"]:
-                    # field = get_field_value(field, request.config_data)
-                    
-                    # Add XML metadata if available
-                    if processed_xml and "id" in field:
+                    # Add element metadata if available
+                    if processed_elements and "id" in field:
                         field_id = field["id"]
-                        if field_id in processed_xml:
-                            field["metadata"] = processed_xml[field_id]
+                        if field_id in processed_elements:
+                            field["metadata"] = processed_elements[field_id]
             
             return {"status": "success", "agent_response": parsed_output}
             
@@ -221,7 +240,6 @@ async def run_service(request: APIRequest):
     except Exception as e:
         logger.exception("An error occurred during the invoke process.")
         return {"status": "error", "message": str(e)}
-
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
