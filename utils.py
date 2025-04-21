@@ -73,7 +73,7 @@ def process_xml(xml_input):
                     # Map iOS attributes to Android format
                     action_details = {
                         'text': elem.get('value', '') or elem.get('label', ''),
-                        'resource_id': elem.get('identifier', '') or elem.get('name', ''),
+                        'resource_id': elem.get('resource-id', '') or elem.get('name', ''),
                         'type': element_type.split('XCUIElementType')[-1],  # Extract just the element type
                         'bounds': bounds,
                         'class': element_type,  # Using full element type as class
