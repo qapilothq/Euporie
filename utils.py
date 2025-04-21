@@ -84,17 +84,12 @@ def process_xml(xml_input):
                     interactable_elements[str(idx)] = action_details
         else:
             # Android XML processing (unchanged)
-            android_input_field_types = {
-                'EditText', 'TextInputEditText', 'TextInputLayout',
-                'AutoCompleteTextView', 'MultiAutoCompleteTextView'
-            }
+
 
             clickable_elements = root.findall('.//*[@clickable="true"]')
             for idx, action_elem in enumerate(clickable_elements, start=1):
                 element_type = action_elem.tag.split('.')[-1]
-                if (element_type in android_input_field_types and
-                    action_elem.get('enabled', 'true') == 'true'):
-                    action_details = {
+                action_details = {
                         'text': action_elem.get('text', ''),
                         'resource_id': action_elem.get('resource-id', ''),
                         'type': element_type,
@@ -104,7 +99,7 @@ def process_xml(xml_input):
                         'enabled': action_elem.get('enabled', 'true') == 'true',
                         'password': action_elem.get('password', 'false') == 'true'
                     }
-                    interactable_elements[str(idx)] = action_details
+                interactable_elements[str(idx)] = action_details
 
         return interactable_elements
 
@@ -219,60 +214,25 @@ def annotate_image(base64_image, xml_data):
     except IOError:
         font = ImageFont.load_default()
     
-    # Get image dimensions
-    img_width, img_height = image.size
-
-    # Get XML resolution from the root element (assuming it's the first element's parent resolution)
-    xml_root = next(iter(xml_data.values()))  # Get the first element's data
-    xml_bounds = xml_root.get('bounds', '')
-    if xml_bounds:
-        coords = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', xml_bounds)
-        if coords:
-            xml_x1, xml_y1, xml_x2, xml_y2 = map(int, coords.groups())
-            xml_width = xml_x2 - xml_x1
-            xml_height = xml_y2 - xml_y1
-        else:
-            # Fall back to explicit width and height from XML if bounds are unavailable
-            xml_width = int(xml_root.get('width', img_width))
-            xml_height = int(xml_root.get('height', img_height))
-    else:
-        xml_width = int(xml_root.get('width', img_width))
-        xml_height = int(xml_root.get('height', img_height))
-
-    # Calculate scaling factors
-    width_scale = img_width / xml_width
-    height_scale = img_height / xml_height
-
     # Draw bounding boxes and element IDs for all interactable elements
     for element_id, element_data in xml_data.items():
-        if "bounds" in element_data and element_data["bounds"]:
+        if "bounds" in element_data:
             bounds = element_data["bounds"]
-            # Parse bounds string like "[0,0][100,100]"
-            coords = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', bounds)
-            if coords:
-                x1, y1, x2, y2 = map(int, coords.groups())
-                # Scale coordinates to match image dimensions
-                scaled_x1 = x1 * width_scale
-                scaled_y1 = y1 * height_scale
-                scaled_x2 = x2 * width_scale
-                scaled_y2 = y2 * height_scale
-                
-                # Ensure coordinates are within image bounds
-                scaled_x1, scaled_y1 = max(0, min(scaled_x1, img_width)), max(0, min(scaled_y1, img_height))
-                scaled_x2, scaled_y2 = max(0, min(scaled_x2, img_width)), max(0, min(scaled_y2, img_height))
-                
-                # Draw rectangle
-                draw.rectangle([(scaled_x1, scaled_y1), (scaled_x2, scaled_y2)], outline="red", width=3)
-                # Draw element ID above the rectangle
-                text_x, text_y = scaled_x1, max(0, scaled_y1 - 30)
-                draw.text((text_x, text_y), element_id, fill="red", font=font)
-
+            if isinstance(bounds, str):
+                # Parse bounds string like "[0,0][100,100]"
+                coords = bounds.replace("][", ",").strip("[]").split(",")
+                if len(coords) == 4:
+                    x1, y1, x2, y2 = map(int, coords)
+                    # Draw rectangle
+                    draw.rectangle([(x1, y1), (x2, y2)], outline="red", width=3)  # Increased outline width
+                    # Draw element ID
+                    draw.text((x1-30, y1-30), element_id, fill="red", font=font)  # Position text at top-left corner
 
     # plt.figure(figsize=(8, 8))
     # plt.imshow(image)
     # plt.axis('off')  # Hide the axis
     # plt.show()
-    # Convert to buffer and encode
+    # Convert back to base64
     buffered = BytesIO()
     image.save(buffered, format="JPEG")
     annotated_base64 = base64.b64encode(buffered.getvalue()).decode()
