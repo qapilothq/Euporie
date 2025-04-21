@@ -210,7 +210,7 @@ def annotate_image(base64_image, xml_data):
     
     # Try to load a font, use default if not available
     try:
-        font = ImageFont.truetype("Arial.ttf", 30)
+        font = ImageFont.truetype("Arial.ttf", 50)
     except IOError:
         font = ImageFont.load_default()
     
