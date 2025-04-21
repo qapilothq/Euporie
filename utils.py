@@ -210,7 +210,7 @@ def annotate_image(base64_image, xml_data):
     
     # Try to load a font, use default if not available
     try:
-        font = ImageFont.truetype("Arial.ttf", 50)
+        font = ImageFont.truetype("Arial.ttf", 60)
     except IOError:
         font = ImageFont.load_default()
     
@@ -225,8 +225,8 @@ def annotate_image(base64_image, xml_data):
                     x1, y1, x2, y2 = map(int, coords)
                     # Draw rectangle
                     draw.rectangle([(x1, y1), (x2, y2)], outline="red", width=3)  # Increased outline width
-                    # Draw element ID
-                    draw.text((x1-30, y1-30), element_id, fill="red", font=font)  # Position text at top-left corner
+                    center_y = (y1 + y2) // 2
+                    draw.text((x1 - 30, center_y+5), element_id, fill="red", font=font)  # Position text at left center
 
     # plt.figure(figsize=(8, 8))
     # plt.imshow(image)
@@ -249,6 +249,8 @@ def annotate_image(base64_image, xml_data):
         print(f"Error saving annotated image: {e}")
 
     return annotated_base64
+
+
 def validate_base64(base64_string: str) -> bool:
     try:
         base64.b64decode(base64_string)
