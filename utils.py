@@ -160,28 +160,51 @@ def process_clickable_elements(clickable_elements):
     
     try:
         for idx, element in enumerate(clickable_elements, start=1):
-            # Extract essential information
-            element_type = element.get('className', '')
-            element_id = element.get('elid', idx)
+            # Extract element ID using elementId
+            element_id = element.get('elementId', idx)
             
-            # Format bounds from the available properties
+            # Get class name from className property
+            element_type = element.get('className', '')
+            
+            # Format bounds - use provided bounds or construct from coordinates
             bounds = element.get('bounds', '')
             if not bounds and 'x1' in element and 'y1' in element and 'x2' in element and 'y2' in element:
                 bounds = f"[{element['x1']},{element['y1']}][{element['x2']},{element['y2']}]"
-                
+            
+            # Initialize values to extract from attributes
+            resource_id = ''
+            content_desc = ''
+            enabled = False
+            password = False
+            text = element.get('text', '')
+            
+            # Extract values from attributes list
+            if 'attributes' in element:
+                for attr in element['attributes']:
+                    if attr.get('name') == 'resource-id':
+                        resource_id = attr.get('value', '')
+                    elif attr.get('name') == 'content-desc':
+                        content_desc = attr.get('value', '')
+                    elif attr.get('name') == 'clickable':
+                        enabled = attr.get('value') == 'true'
+                    elif attr.get('name') == 'password':
+                        password = attr.get('value') == 'true'
+                    elif attr.get('name') == 'text' and not text:
+                        text = attr.get('value', '')
+            
             # Format consistent with process_xml output
             action_details = {
-                'text': element.get('text', ''),
-                'resource_id': element.get('resourceid', ''),
+                'text': text,
+                'resource_id': resource_id,
                 'type': element_type.split('.')[-1] if element_type else '',
                 'bounds': bounds,
                 'class': element_type,
-                'content_desc': element.get('contentdesc', ''),
-                'enabled': element.get('clickable', 'false') == 'true',
-                'password': False  # Default, can be adjusted based on actual data
+                'content_desc': content_desc,
+                'enabled': enabled,
+                'password': password
             }
             
-            # Store by provided ID or index
+            # Store by elementId or index
             interactable_elements[str(element_id)] = action_details
             
         return interactable_elements
