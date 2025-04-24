@@ -114,23 +114,17 @@ When assigning the "type" field, choose one of the following standardized field 
 - gender
 - password
 - username
-- profile
 - code ( anything and everything related to codes)
 - company
-- company_email
 - website (url)
 - language_name
-- locale
 - postalcode
-- user_agent
 - random_int (random set of numbers)
 - ip_address (ipv4, ipv6)
 - date_time
 - search_term
 - product_name
 - location_name (anything related to address and location , this should be used)
-- menu_option
-- filter_value
 - sentence (all description boxes and all text areas)
 
 If none of these types is applicable for an input field, set the "type" value to null and ensure that the "reason" field includes an explanation stating that no valid standardized field type was available.
