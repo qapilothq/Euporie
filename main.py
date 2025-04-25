@@ -35,7 +35,7 @@ class APIRequest(BaseModel):
     xml_url: Optional[str] = None      # XML URL option
     image_url: Optional[str] = None    # Image URL option
     config_data: Optional[Dict[str, Any]] = None
-    clickable_elements: Optional[list] = None  # List of clickable elements objects
+    actionable_elements: Optional[list] = None  # List of clickable elements objects
 
 
 faker = Faker()
@@ -150,9 +150,9 @@ async def run_service(request: APIRequest):
             encoded_image =   encode_image(request.image_url)
         
         # Process elements data (clickable elements, XML, or XML URL)
-        if hasattr(request, 'clickable_elements') and request.clickable_elements:
+        if hasattr(request, 'clickable_elements') and request.actionable_elements:
             logger.info("Processing clickable elements.")
-            processed_elements =   process_clickable_elements(request.clickable_elements)
+            processed_elements =   process_clickable_elements(request.actionable_elements)
         elif request.xml:
             processed_elements =  process_xml(request.xml)
         elif request.xml_url:
@@ -172,7 +172,7 @@ async def run_service(request: APIRequest):
                 ])])
             
             # Add the source data for context
-            if hasattr(request, 'clickable_elements') and request.clickable_elements:
+            if hasattr(request, 'clickable_elements') and request.actionable_elements:
                 messages.append(
                     ("human", f'These are the clickable elements of that screen: {processed_elements}')
                 )
@@ -192,7 +192,7 @@ async def run_service(request: APIRequest):
             logger.info("Only elements data provided")
             logger.debug(f"Processed elements: {processed_elements}")
             
-            if hasattr(request, 'clickable_elements') and request.clickable_elements:
+            if hasattr(request, 'clickable_elements') and request.actionable_elements:
                 messages.append(
                     ("human", f'These are the clickable elements of that screen: {processed_elements}')
                 )
@@ -249,4 +249,4 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8003)
