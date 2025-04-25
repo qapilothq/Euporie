@@ -35,7 +35,7 @@ class APIRequest(BaseModel):
     xml_url: Optional[str] = None      # XML URL option
     image_url: Optional[str] = None    # Image URL option
     config_data: Optional[Dict[str, Any]] = None
-    actionable_elements: Optional[list] = None  # List of clickable elements objects
+    actionable_elements: Optional[list[Any]] = []  # List of actionable elements objects
 
 
 faker = Faker()
@@ -150,7 +150,7 @@ async def run_service(request: APIRequest):
             encoded_image =   encode_image(request.image_url)
         
         # Process elements data (clickable elements, XML, or XML URL)
-        if hasattr(request, 'clickable_elements') and request.actionable_elements:
+        if request.actionable_elements:
             logger.info("Processing clickable elements.")
             processed_elements =   process_clickable_elements(request.actionable_elements)
         elif request.xml:
@@ -172,9 +172,9 @@ async def run_service(request: APIRequest):
                 ])])
             
             # Add the source data for context
-            if hasattr(request, 'clickable_elements') and request.actionable_elements:
+            if request.actionable_elements:
                 messages.append(
-                    ("human", f'These are the clickable elements of that screen: {processed_elements}')
+                    ("human", f'These are the actionable elements of that screen: {processed_elements}')
                 )
             else:
                 messages.append(
