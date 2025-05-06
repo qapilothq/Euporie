@@ -12,8 +12,9 @@ from faker import Faker
 import base64
 from logger_config import setup_logger
 import time
+import uuid
 from fastapi.middleware.cors import CORSMiddleware
-from langsmith import traceable
+from langsmith import traceable, get_current_run_tree
 
 logger = setup_logger()
 
@@ -30,6 +31,7 @@ app.add_middleware(
 )
 
 class APIRequest(BaseModel):
+    request_id: Optional[str] = uuid.uuid4().hex
     image: Optional[str] = None        # Base64 encoded image string
     xml: Optional[str] = None          # XML as string
     xml_url: Optional[str] = None      # XML URL option
@@ -115,22 +117,108 @@ def get_field_value(field: Dict[str, Any], config_data: Optional[Dict[str, Any]]
     return field
 
 @traceable
+def generate_data(request, messages, processed_elements, encoded_image):
+
+    rt = get_current_run_tree()
+    if rt:
+        rt.metadata["request_id"] = request.request_id
+    llm_key = os.getenv("OPENAI_API_KEY")
+    if not llm_key:
+        logger.error("API key not found.")
+        return {"request_id": request.request_id, "status": "error", "message": "API key not found"}
+
+    logger.info("Initializing LLM.")
+    llm = initialize_llm(llm_key)
+
+    # Combine image and elements data if both are available
+    if encoded_image and processed_elements:
+        logger.info("Both image and elements data provided")
+        logger.debug(f"Processed elements: {processed_elements}")
+        annotated_image = annotate_image(encoded_image, processed_elements)
+
+        messages.extend([
+            ("human", [
+                {"type": "text", "text": "Screenshot of current screen with annotated element IDs"},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{annotated_image}"}},
+            ])])
+        
+        # Add the source data for context
+        if request.actionable_elements:
+            messages.append(
+                ("human", f'These are the actionable elements of that screen: {processed_elements}')
+            )
+        else:
+            messages.append(
+                ("human", f'This is the xml source of that screen: {processed_elements}')
+            )
+
+    elif encoded_image:
+        logger.info("Only image provided")
+        messages.extend([
+            ("human", [
+                {"type": "text", "text": "Screenshot of current screen"},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}},
+            ])])
+    elif processed_elements:
+        logger.info("Only elements data provided")
+        logger.debug(f"Processed elements: {processed_elements}")
+        
+        if hasattr(request, 'clickable_elements') and request.actionable_elements:
+            messages.append(
+                ("human", f'These are the clickable elements of that screen: {processed_elements}')
+            )
+        else:
+            messages.append(
+                ("human", f'This is the xml source of that screen: {processed_elements}')
+            )
+    else:
+        logger.error("Either image or elements data must be provided.")
+        raise HTTPException(
+            status_code=400,
+            detail="Either clickable elements, XML (string/URL), or image (base64/URL) must be provided."
+        )
+
+    # Process the rest of the function as before
+    ai_msg = llm.invoke(messages)
+    logger.debug(f"AI message content: {ai_msg.content}")
+    cleaned_content = clean_markdown_json(ai_msg.content)
+    
+    try:
+        parsed_output = json.loads(cleaned_content)
+        
+        # Validate response format
+        if "data_generation_required" not in parsed_output:
+            return {"status": "error", "message": "Invalid response format"}
+        
+        # Process fields if data generation is required
+        if parsed_output["data_generation_required"] == True:
+            if "fields" not in parsed_output:
+                return {"status": "error", "message": "Missing fields array"}
+            
+            # Process each field
+            for field in parsed_output["fields"]:
+                # Add element metadata if available
+                if processed_elements and "id" in field:
+                    field_id = field["id"]
+                    if field_id in processed_elements:
+                        field["metadata"] = processed_elements[field_id]
+        
+        if processed_elements :
+            return {"request_id": request.request_id, "status": "success","message":"XML used for metadata processing", "agent_response": parsed_output}
+        else:
+            return {"request_id": request.request_id, "status": "success","message":"XML was not available for metadata processing", "agent_response": parsed_output}
+        
+    except json.JSONDecodeError:
+        return {"request_id": request.request_id, "status": "error", "message": "Failed to parse AI response"}
+
+@traceable
 # Update the FastAPI endpoint to handle clickable elements
 @app.post("/invoke")
 async def run_service(request: APIRequest):
     try:
         logger.info("Invoke endpoint called.")
-
-        llm_key = os.getenv("OPENAI_API_KEY")
-        if not llm_key:
-            logger.error("API key not found.")
-            return {"status": "error", "message": "API key not found"}
-
-        logger.info("Initializing LLM.")
-        llm = initialize_llm(llm_key)
-        messages = [("system", system_prompt)]
-
         processed_elements = None
+        messages = [("system", system_prompt)]
 
         # Handle config data
         if request.config_data:
@@ -159,90 +247,12 @@ async def run_service(request: APIRequest):
             logger.info(f"XML URL: {request.xml_url}")
             processed_elements =  process_xml(request.xml_url)
         
-        # Combine image and elements data if both are available
-        if encoded_image and processed_elements:
-            logger.info("Both image and elements data provided")
-            logger.debug(f"Processed elements: {processed_elements}")
-            annotated_image = annotate_image(encoded_image, processed_elements)
-
-            messages.extend([
-                ("human", [
-                    {"type": "text", "text": "Screenshot of current screen with annotated element IDs"},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{annotated_image}"}},
-                ])])
-            
-            # Add the source data for context
-            if request.actionable_elements:
-                messages.append(
-                    ("human", f'These are the actionable elements of that screen: {processed_elements}')
-                )
-            else:
-                messages.append(
-                    ("human", f'This is the xml source of that screen: {processed_elements}')
-                )
-
-        elif encoded_image:
-            logger.info("Only image provided")
-            messages.extend([
-                ("human", [
-                    {"type": "text", "text": "Screenshot of current screen"},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}},
-                ])])
-        elif processed_elements:
-            logger.info("Only elements data provided")
-            logger.debug(f"Processed elements: {processed_elements}")
-            
-            if hasattr(request, 'clickable_elements') and request.actionable_elements:
-                messages.append(
-                    ("human", f'These are the clickable elements of that screen: {processed_elements}')
-                )
-            else:
-                messages.append(
-                    ("human", f'This is the xml source of that screen: {processed_elements}')
-                )
-        else:
-            logger.error("Either image or elements data must be provided.")
-            raise HTTPException(
-                status_code=400,
-                detail="Either clickable elements, XML (string/URL), or image (base64/URL) must be provided."
-            )
-
-        # Process the rest of the function as before
-        ai_msg = llm.invoke(messages)
-        logger.debug(f"AI message content: {ai_msg.content}")
-        cleaned_content = clean_markdown_json(ai_msg.content)
-        
-        try:
-            parsed_output = json.loads(cleaned_content)
-            
-            # Validate response format
-            if "data_generation_required" not in parsed_output:
-                return {"status": "error", "message": "Invalid response format"}
-            
-            # Process fields if data generation is required
-            if parsed_output["data_generation_required"] == True:
-                if "fields" not in parsed_output:
-                    return {"status": "error", "message": "Missing fields array"}
-                
-                # Process each field
-                for field in parsed_output["fields"]:
-                    # Add element metadata if available
-                    if processed_elements and "id" in field:
-                        field_id = field["id"]
-                        if field_id in processed_elements:
-                            field["metadata"] = processed_elements[field_id]
-            
-            if processed_elements :
-                return {"status": "success","message":"XML used for metadata processing", "agent_response": parsed_output}
-            else:
-                return {"status": "success","message":"XML was not available for metadata processing", "agent_response": parsed_output}
-            
-        except json.JSONDecodeError:
-            return {"status": "error", "message": "Failed to parse AI response"}
+        return generate_data(request=request, messages=messages, processed_elements=processed_elements, encoded_image=encoded_image)
 
     except Exception as e:
         logger.exception("An error occurred during the invoke process.")
-        return {"status": "error", "message": str(e)}
+        return {"request_id": request.request_id, "status": "error", "message": str(e)}
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
