@@ -32,6 +32,8 @@ app.add_middleware(
 
 class APIRequest(BaseModel):
     request_id: Optional[str] = uuid.uuid4().hex
+    run_id: Optional[str] = None
+    node_id: Optional[str] = None
     image: Optional[str] = None        # Base64 encoded image string
     xml: Optional[str] = None          # XML as string
     xml_url: Optional[str] = None      # XML URL option
@@ -122,6 +124,8 @@ def generate_data(request, messages, processed_elements, encoded_image):
     rt = get_current_run_tree()
     if rt:
         rt.metadata["request_id"] = request.request_id
+        rt.metadata["run_id"] = request.run_id
+        rt.metadata["node_id"] = request.node_id
     llm_key = os.getenv("OPENAI_API_KEY")
     if not llm_key:
         logger.error("API key not found.")
