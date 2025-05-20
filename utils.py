@@ -9,7 +9,9 @@ import uuid
 import re
 import json
 # import matplotlib.pyplot as plt
+from logger_config import setup_logger
 
+logger = setup_logger()
 def process_xml(xml_input):
     """
     Extracts all input field elements from the given XML input (Android or iOS).
@@ -272,7 +274,38 @@ def annotate_image(base64_image, xml_data):
 
     return annotated_base64
 
+def trim_element_jsons(request_id, elements_to_trim, os: str):
+    """
+    Trim UI element JSONs to include only necessary fields for LLM processing.
+    
+    Args:
+        request_id: Unique identifier for the request
+        elements_to_trim: List of UI elements to trim
+        os: Operating system ('android' or 'ios')
+    
+    Returns:
+        List of trimmed UI element dictionaries
+    """
+    try:
+        trimmed_elements = []
+        for element in elements_to_trim:
+            attributes = element.get("attributes")
+            trimmed_element = {
+                "node_id": element.get("node_id"),
+                "description": element.get("description"),
+                "bounds": attributes.get("bounds")
+            }
+            if os == 'android':
+                trimmed_element["element_type"] = attributes.get("class")
+            elif os == 'ios':
+                trimmed_element["element_type"] = attributes.get("type")  # iOS uses 'type' (e.g., XCUIElementTypeButton)
+            
+            trimmed_elements.append(trimmed_element)
 
+        return trimmed_elements
+    except Exception as e:
+        logger.error(f"requestid :: {request_id} :: Exception in trimming tokens in filtered elements before prioritization; returning as is: {str(e)}")
+        return elements_to_trim
 def validate_base64(base64_string: str) -> bool:
     try:
         base64.b64decode(base64_string)

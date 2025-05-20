@@ -1,4 +1,4 @@
-from utils import encode_image, process_xml, validate_base64,annotate_image,process_clickable_elements
+from utils import encode_image, process_xml, validate_base64,annotate_image,process_clickable_elements,trim_element_jsons
 from llm import initialize_llm
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
@@ -40,6 +40,7 @@ class APIRequest(BaseModel):
     image_url: Optional[str] = None    # Image URL option
     config_data: Optional[Dict[str, Any]] = None
     actionable_elements: Optional[list[Any]] = []  # List of actionable elements objects
+    os: Optional[str] = "android"
 
 
 faker = Faker()
@@ -183,6 +184,7 @@ def generate_data(request, messages, processed_elements, encoded_image):
         )
 
     # Process the rest of the function as before
+    logger.info('Calling LLM')
     ai_msg = llm.invoke(messages)
     logger.debug(f"AI message content: {ai_msg.content}")
     cleaned_content = clean_markdown_json(ai_msg.content)
@@ -223,6 +225,8 @@ async def run_service(request: APIRequest):
         logger.info("Invoke endpoint called.")
         processed_elements = None
         messages = [("system", system_prompt)]
+
+        messages.append(("human", f"Actionable elements available on current screen: {trim_element_jsons(1,request.actionable_elements,request.os)}"))
 
         # Handle config data
         if request.config_data:
